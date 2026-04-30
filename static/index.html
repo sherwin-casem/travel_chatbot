@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Atlas Travel — Concierge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="bg-gradient" aria-hidden="true"></div>
+    <header class="shell-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <p class="brand-title">Atlas Travel</p>
+          <p class="brand-sub">Concierge · policies, bookings & care</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="pill" id="session-pill">New conversation</span>
+      </div>
+    </header>
+
+    <main class="shell">
+      <aside class="side-panel">
+        <h2>How we help</h2>
+        <ul class="feature-list">
+          <li>Grounded answers from your internal PDFs &amp; guides</li>
+          <li>Structured replies with next steps &amp; booking links</li>
+          <li>Automatic handoff prompts for complex cases</li>
+        </ul>
+        <div class="side-foot">
+          <p class="muted small">MVP assistant — responses use retrieved passages to reduce guesswork.</p>
+        </div>
+      </aside>
+
+      <section class="chat-panel" aria-label="Chat">
+        <div class="chat-scroll" id="messages"></div>
+        <form class="composer" id="composer" autocomplete="off">
+          <label class="sr-only" for="msg">Message</label>
+          <textarea
+            id="msg"
+            rows="1"
+            placeholder="Ask about cancellations, changes, destinations, or policies..."
+            required
+          ></textarea>
+          <button type="submit" class="send-btn" id="send">
+            <span>Send</span>
+          </button>
+        </form>
+      </section>
+    </main>
+
+    <template id="bubble-user">
+      <div class="msg msg-user">
+        <div class="msg-inner"></div>
+      </div>
+    </template>
+    <template id="bubble-bot">
+      <div class="msg msg-bot">
+        <div class="msg-inner"></div>
+        <div class="msg-meta"></div>
+      </div>
+    </template>
+
+    <script src="/static/app.js" type="module"></script>
+  </body>
+</html>
