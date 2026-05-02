@@ -1,80 +1,87 @@
 # Travel Agency RAG Concierge
 
-MVP conversational assistant for a travel agency: **retrieval-augmented generation** over your internal PDFs and text guides, **structured replies** (answer + booking link + related services), and **automatic escalation** hints when retrieval is weak or the request needs a human.
+MVP for a travel agency: **RAG** over internal documents, **structured answers** (links + related services), escalation routing, and a **React** chat UI that talks to a separate **FastAPI** backend.
 
-## Architecture
-
-- **Ingestion:** PDF / Markdown / TXT / JSON FAQs under [`data/`](data/) → chunk → **ChromaDB** (persistent). Embeddings: **OpenAI** (`text-embedding-3-small` by default) when `OPENAI_API_KEY` is set, otherwise **ONNX MiniLM** locally (no PyTorch).
-- **Retrieval:** Top‑k semantic search + distance-based confidence score.
-- **Generation:** **OpenAI** chat API with JSON-only output and strict “use only context” instructions.
-- **Escalation:** Keyword/heuristic pre-checks, low retrieval confidence, and/or model flag → support URL appended to the answer.
-- **Chat UI:** Modern single-page web UI served by FastAPI (`static/`).
-
-```mermaid
-flowchart LR
-  subgraph ingest [Ingestion]
-    PDF[PDFs and guides] --> Chunk[Chunk + metadata]
-    Chunk --> Chroma[(ChromaDB)]
-  end
-  subgraph runtime [Each message]
-    Q[User question] --> Ret[Semantic retrieval]
-    Chroma --> Ret
-    Ret --> Guard[Confidence + routing]
-    Guard --> LLM[OpenAI JSON synthesis]
-    LLM --> Out[Answer + links + services]
-  end
-```
-
-## Quick start
-
-**1.** Python 3.10+ recommended.
-
-**2.** Create a virtualenv and install dependencies:
-
-```bash
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-**3.** Copy environment template and set your OpenAI key:
-
-```bash
-copy .env.example .env
-```
-
-Edit `.env` and set `OPENAI_API_KEY` (recommended: the same key drives **chat** and **embeddings**, avoiding local PyTorch/ONNX). Adjust `BOOKING_BASE_URL`, `SUPPORT_CONTACT_URL`, and `SIMILARITY_THRESHOLD` (minimum retrieval “match” score in \[0,1\]) as needed. If you omit the key, ingestion uses **local ONNX** embeddings; on some Windows hosts ONNX DLLs fail—in that case set the key or install the [Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist).
-
-**4.** Add documents under `data/` (your PDF is already at `data/docs/…`). Then build the vector index:
-
-```bash
-python -m app.ingest
-```
-
-**5.** Run the API and UI:
-
-```bash
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-Open http://127.0.0.1:8000 — the chat widget loads there. API: `POST /api/chat` with JSON `{"message":"…","session_id":null}`.
-
-## Logging
-
-Conversation turns are appended to `logs/conversations.jsonl` (created automatically).
-
-## Project layout
+## Repository layout
 
 | Path | Role |
 |------|------|
-| `app/ingest.py` | Document pipeline → Chroma |
-| `app/retrieval.py` | Vector query + passages |
-| `app/llm.py` | Prompt + OpenAI JSON response |
-| `app/escalation.py` | Routing / escalation heuristics |
-| `app/chat_service.py` | Session memory + orchestration |
-| `app/main.py` | FastAPI routes |
-| `static/` | Chat frontend |
+| `backend/` | FastAPI JSON API, ingestion, ChromaDB, OpenAI |
+| `frontend/` | Vite + React + TypeScript chat client |
+| `data/` | PDFs, FAQs, and guides to index |
+| `.env` (repo root, gitignored) | Secrets and configuration |
 
-## Production notes (later)
+## Backend
 
-Swap the in-memory session store for Redis or your auth-aware session layer; add auth to `/api/chat`; pin model versions; schedule periodic re-ingestion; wire `SUPPORT_CONTACT_URL` to your CRM or ticketing system.
+**1.** Python 3.10+ and a virtualenv at the repo root (or anywhere you prefer):
+
+```powershell
+cd D:\github\travel_chatbot
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r backend\requirements.txt
+```
+
+**2.** From the repo root, copy `.env.example` → `.env` and set `OPENAI_API_KEY`. Keep real keys out of git.
+
+**3.** Build the vector index (run with `backend` as current directory so `python -m app` resolves):
+
+```powershell
+cd backend
+python -m app.ingest
+```
+
+**4.** Start the API (localhost only is recommended for dev):
+
+```powershell
+cd backend
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+- `GET /api/health` — liveness + chunk count  
+- `POST /api/chat` — `{ "message": "...", "session_id": null }`  
+Errors return JSON: `{ "error": { "code", "message", "details" } }` with appropriate HTTP status (e.g. `KB_NOT_READY`, `RETRIEVAL_FAILED`, `LLM_UPSTREAM`).
+
+**CORS:** set `CORS_ORIGINS` in `.env` (comma-separated), e.g. `http://localhost:5173,http://127.0.0.1:5173`.
+
+## Frontend
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Vite defaults to **http://localhost:5173** and **proxies `/api` → http://127.0.0.1:8000**, so you normally do not need `VITE_API_BASE` in dev.
+
+For production builds served separately, set `VITE_API_BASE` to the public API origin (see `frontend/.env.example`).
+
+**Error handling:** the UI uses an **error boundary**, an **alert banner** for API errors, and typed **`ApiError`** parsing for non-OK responses and malformed JSON.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph fe [frontend]
+    UI[React SPA]
+  end
+  subgraph be [backend]
+    API[FastAPI]
+    RAG[RAG pipeline]
+    Chroma[(ChromaDB)]
+  end
+  UI -->|REST| API
+  API --> RAG
+  RAG --> Chroma
+```
+
+## Security notes
+
+- Never commit `.env` or live API keys. If a key was ever committed to `.env.example` or history, **rotate it** in the provider console.  
+- Bind the API to `127.0.0.1` unless you intentionally expose it and add TLS + auth.
+
+## Troubleshooting
+
+**`POST /api/chat` returns 503 (`KB_NOT_READY`).** The vector collection is missing or empty—often because **`python -m app.ingest` did not finish successfully**. On many Windows hosts, local ONNX embeddings fail; set **`OPENAI_API_KEY`** in the repo-root `.env` (recommended), then run `cd backend && python -m app.ingest`. Only set **`ALLOW_LOCAL_ONNX_EMBEDDINGS=true`** if you intentionally use Chroma’s ONNX model and onnxruntime loads on your OS. **`GET /api/health`** includes a **`hint`** when status is `degraded`.
+
+**503 `EMBEDDINGS_NOT_CONFIGURED`.** The API could not create embeddings (usually missing **`OPENAI_API_KEY`**). Set the key and restart the backend; ingest again if the index was never built.

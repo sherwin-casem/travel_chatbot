@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 
-
 _AMBIGUOUS_PATTERNS = [
     r"\b(or worse|i don't know how|complicated|complex)\b",
     r"\b(multiple cities|multi[- ]?stop|round[\s-]?the[\s-]?world)\b",
