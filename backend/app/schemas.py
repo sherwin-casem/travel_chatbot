@@ -21,11 +21,6 @@ class RetrievedPassage(BaseModel):
     distance: float | None = None
 
 
-class ChatMessage(BaseModel):
-    role: str  # user | assistant
-    content: str
-
-
 class ChatRequest(BaseModel):
     message: str
     session_id: str | None = None
@@ -41,3 +36,13 @@ class ChatResponse(BaseModel):
     support_url: str | None = None
     sources: list[RetrievedPassage] = Field(default_factory=list)
     retrieval_confidence: float | None = None
+
+
+class ApiErrorBody(BaseModel):
+    code: str
+    message: str
+    details: dict | list | None = None
+
+
+class ApiErrorResponse(BaseModel):
+    error: ApiErrorBody

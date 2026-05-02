@@ -32,7 +32,6 @@ class ChatService:
 
         passage_tuples = [(p.text, p.source, p.page) for p in passages[: settings.retrieval_top_k]]
 
-        # Try LLM unless we're confident we should skip (optional: still call LLM for escalation copy)
         try:
             parsed = generate_reply(message, self._sessions[sid], passage_tuples)
         except RuntimeError as e:

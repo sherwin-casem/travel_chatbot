@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+import logging
 
-from openai import OpenAI
+from openai import APIConnectionError, APIStatusError, APIError, APITimeoutError, OpenAI, RateLimitError
 
 from app.config import settings
+from app.exceptions import LLMError
 from app.schemas import LLMStructuredResponse
 
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are a travel agency assistant. Answer ONLY using the KNOWLEDGE CONTEXT below.
 If the context does not contain enough information, say clearly what is missing and suggest contacting support.
@@ -64,12 +67,41 @@ def generate_reply(
         },
     )
 
-    completion = client.chat.completions.create(
-        model=settings.openai_chat_model,
-        messages=msgs,
-        temperature=0.35,
-        response_format={"type": "json_object"},
-    )
+    try:
+        completion = client.chat.completions.create(
+            model=settings.openai_chat_model,
+            messages=msgs,
+            temperature=0.35,
+            response_format={"type": "json_object"},
+        )
+    except RateLimitError as e:
+        logger.warning("OpenAI rate limited: %s", e)
+        raise LLMError("The assistant is temporarily rate-limited. Try again shortly.", code="LLM_RATE_LIMIT", cause=e) from e
+    except APIConnectionError as e:
+        logger.warning("OpenAI connection error: %s", e)
+        raise LLMError("Could not reach the language model service.", code="LLM_CONNECTION", cause=e) from e
+    except APITimeoutError as e:
+        logger.warning("OpenAI timeout: %s", e)
+        raise LLMError("The language model request timed out.", code="LLM_TIMEOUT", cause=e) from e
+    except APIStatusError as e:
+        logger.warning("OpenAI API error: %s", e)
+        raise LLMError("The language model service returned an error.", code="LLM_UPSTREAM", cause=e) from e
+    except APIError as e:
+        logger.warning("OpenAI API error (generic): %s", e)
+        raise LLMError("The language model service returned an error.", code="LLM_UPSTREAM", cause=e) from e
+    except Exception as e:  # pragma: no cover
+        logger.exception("Unexpected OpenAI client error")
+        raise LLMError("Unexpected error calling the language model.", code="LLM_UNEXPECTED", cause=e) from e
+
     raw = completion.choices[0].message.content or "{}"
-    data = json.loads(raw)
-    return LLMStructuredResponse.model_validate(data)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        logger.warning("LLM returned non-JSON: %s", raw[:500])
+        raise LLMError("Model returned invalid JSON.", code="LLM_BAD_JSON", cause=e) from e
+
+    try:
+        return LLMStructuredResponse.model_validate(data)
+    except Exception as e:
+        logger.warning("LLM JSON failed validation: %s", e)
+        raise LLMError("Model response had an unexpected shape.", code="LLM_BAD_SHAPE", cause=e) from e

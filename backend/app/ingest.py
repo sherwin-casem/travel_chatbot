@@ -1,6 +1,9 @@
 """
-Load PDFs and plain-text FAQs from ./data (recursive) into ChromaDB.
-Run: python -m app.ingest
+Load PDFs and plain-text FAQs from the repo `data/` tree into ChromaDB.
+
+Run from repo root:
+  cd backend && ..\\.venv\\Scripts\\python -m app.ingest
+(or activate venv first, cwd=backend)
 """
 
 from __future__ import annotations
@@ -13,6 +16,7 @@ from pypdf import PdfReader
 from app.chunking import chunk_text
 from app.config import settings
 from app.embeddings import make_embedding_function
+from app.exceptions import EmbeddingsNotConfiguredError
 
 try:
     import chromadb
@@ -82,7 +86,7 @@ def main() -> None:
         raise SystemExit(f"Data directory not found: {root.resolve()}")
 
     ef = make_embedding_function()
-    client = chromadb.PersistentClient(path=settings.chroma_path)
+    client = chromadb.PersistentClient(path=str(settings.chroma_path))
     coll = client.get_or_create_collection(
         name=settings.collection_name,
         embedding_function=ef,
@@ -126,4 +130,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except EmbeddingsNotConfiguredError as e:
+        raise SystemExit(f"Cannot ingest: {e}") from e
