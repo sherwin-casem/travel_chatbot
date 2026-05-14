@@ -74,13 +74,14 @@ travel-chatbot-rag/
 
 ### 1️⃣ Clone the repository
 
-bash
+```bash
 git clone https://github.com/your-username/travel-chatbot-rag.git
 cd travel-chatbot-rag
+```
 
 ### 2️⃣ Setup environment
 
-bash
+```bash
 python -m venv venv
 # Windows
 venv\Scripts\activate
@@ -88,6 +89,7 @@ venv\Scripts\activate
 source venv/bin/activate
 
 pip install -r requirements.txt
+```
 
 Create a .env file in the root directory:
 OPENAI_API_KEY=your_openai_api_key_here
@@ -96,11 +98,13 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 ```bash
 python app/ingest.py
+```
 
 ### 4️⃣ Start FastAPI server
 
 ```bash
 uvicorn app.main:app --reload
+```
 
 ### 5️⃣ Start Streamlit UI
 
@@ -109,3 +113,4 @@ streamlit run ui/streamlit_app.py
 
 Open your browser at http://localhost:8501
 and start chatting.
+```
