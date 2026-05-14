@@ -1,87 +1,111 @@
-# Travel Agency RAG Concierge
+# ✈️ Travel Agency AI Chatbot (RAG)
 
-MVP for a travel agency: **RAG** over internal documents, **structured answers** (links + related services), escalation routing, and a **React** chat UI that talks to a separate **FastAPI** backend.
+An intelligent travel assistant chatbot built with **Retrieval-Augmented Generation (RAG)**. It answers user queries using your internal travel documents (PDFs, FAQs, service guides) and provides accurate, context-aware responses, including booking links and related travel services.
 
-## Repository layout
+---
 
-| Path | Role |
-|------|------|
-| `backend/` | FastAPI JSON API, ingestion, ChromaDB, OpenAI |
-| `frontend/` | Vite + React + TypeScript chat client |
-| `data/` | PDFs, FAQs, and guides to index |
-| `.env` (repo root, gitignored) | Secrets and configuration |
+## 🚀 Features
 
-## Backend
+- ✅ Answer travel-related questions: bookings, cancellations, itinerary changes, destinations, services.
+- ✅ RAG-powered: responses are grounded in your own documents.
+- ✅ Structured JSON responses: answer + booking link + related services.
+- ✅ Source citations: show the documents used for transparency.
+- ✅ Escalation logic: automatically route complex or ambiguous queries to human support.
+- ✅ Easy to extend with new documents and APIs.
+- ✅ Multi-turn conversation support via Streamlit chat interface.
 
-**1.** Python 3.10+ and a virtualenv at the repo root (or anywhere you prefer):
+---
 
-```powershell
-cd D:\github\travel_chatbot
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r backend\requirements.txt
-```
+## 🏗 Architecture
 
-**2.** From the repo root, copy `.env.example` → `.env` and set `OPENAI_API_KEY`. Keep real keys out of git.
+The system follows a modular architecture:
 
-**3.** Build the vector index (run with `backend` as current directory so `python -m app` resolves):
+1. **User Interface (Streamlit)**
+   - Chat interface for customer queries.
 
-```powershell
-cd backend
-python -m app.ingest
-```
+2. **API Layer (FastAPI)**
+   - Handles requests from UI.
+   - Orchestrates the RAG pipeline.
+   - Returns structured JSON responses.
 
-**4.** Start the API (localhost only is recommended for dev):
+3. **Retrieval & Generation (LangChain + LLM)**
+   - Vector search with FAISS.
+   - Context retrieval and prompt construction.
+   - Generates answers using LLM (OpenAI, LLaMA, etc.)
 
-```powershell
-cd backend
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
+4. **Knowledge Base**
+   - PDF documents, FAQs, service guides.
+   - Stored as vector embeddings in FAISS.
 
-- `GET /api/health` — liveness + chunk count  
-- `POST /api/chat` — `{ "message": "...", "session_id": null }`  
-Errors return JSON: `{ "error": { "code", "message", "details" } }` with appropriate HTTP status (e.g. `KB_NOT_READY`, `RETRIEVAL_FAILED`, `LLM_UPSTREAM`).
+---
 
-**CORS:** set `CORS_ORIGINS` in `.env` (comma-separated), e.g. `http://localhost:5173,http://127.0.0.1:5173`.
+## 📁 Project Structure
 
-## Frontend
+travel-chatbot-rag/
+├── app/
+│ ├── main.py # FastAPI entry point
+│ ├── api/ # API routes
+│ ├── rag/ # RAG pipeline (retrieval + LLM)
+│ └── ingest.py # Script to create FAISS vectorstore
+├── data/ # PDF documents for ingestion
+├── vectorstore/ # FAISS index (auto-generated)
+├── ui/
+│ └── streamlit_app.py # Chat UI
+├── requirements.txt # Python dependencies
+└── .env # Environment variables (API keys)
 
-```powershell
-cd frontend
-npm install
-npm run dev
-```
 
-Vite defaults to **http://localhost:5173** and **proxies `/api` → http://127.0.0.1:8000**, so you normally do not need `VITE_API_BASE` in dev.
+---
 
-For production builds served separately, set `VITE_API_BASE` to the public API origin (see `frontend/.env.example`).
+## 🛠 Tech Stack
 
-**Error handling:** the UI uses an **error boundary**, an **alert banner** for API errors, and typed **`ApiError`** parsing for non-OK responses and malformed JSON.
+- **Python 3.11+** – backend and scripting  
+- **FastAPI** – API layer  
+- **Streamlit** – frontend chat interface  
+- **LangChain** – RAG orchestration  
+- **FAISS** – vector search / retrieval  
+- **OpenAI API** – LLM for response generation  
+- **PyPDF** – PDF document parsing  
+- **Pydantic** – structured validation  
 
-## Architecture
+---
 
-```mermaid
-flowchart LR
-  subgraph fe [frontend]
-    UI[React SPA]
-  end
-  subgraph be [backend]
-    API[FastAPI]
-    RAG[RAG pipeline]
-    Chroma[(ChromaDB)]
-  end
-  UI -->|REST| API
-  API --> RAG
-  RAG --> Chroma
-```
+## ⚡ Quick Start
 
-## Security notes
+### 1️⃣ Clone the repository
 
-- Never commit `.env` or live API keys. If a key was ever committed to `.env.example` or history, **rotate it** in the provider console.  
-- Bind the API to `127.0.0.1` unless you intentionally expose it and add TLS + auth.
+```bash
+git clone https://github.com/your-username/travel-chatbot-rag.git
+cd travel-chatbot-rag
 
-## Troubleshooting
+### 2️⃣ Setup environment
 
-**`POST /api/chat` returns 503 (`KB_NOT_READY`).** The vector collection is missing or empty—often because **`python -m app.ingest` did not finish successfully**. On many Windows hosts, local ONNX embeddings fail; set **`OPENAI_API_KEY`** in the repo-root `.env` (recommended), then run `cd backend && python -m app.ingest`. Only set **`ALLOW_LOCAL_ONNX_EMBEDDINGS=true`** if you intentionally use Chroma’s ONNX model and onnxruntime loads on your OS. **`GET /api/health`** includes a **`hint`** when status is `degraded`.
+```bash
+python -m venv venv
+# Windows
+venv\Scripts\activate
+# macOS/Linux
+source venv/bin/activate
 
-**503 `EMBEDDINGS_NOT_CONFIGURED`.** The API could not create embeddings (usually missing **`OPENAI_API_KEY`**). Set the key and restart the backend; ingest again if the index was never built.
+pip install -r requirements.txt
+
+Create a .env file in the root directory:
+OPENAI_API_KEY=your_openai_api_key_here
+
+### 3️⃣ Ingest documents (build vectorstore)
+
+```bash
+python app/ingest.py
+
+### 4️⃣ Start FastAPI server
+
+```bash
+uvicorn app.main:app --reload
+
+### 5️⃣ Start Streamlit UI
+
+```bash
+streamlit run ui/streamlit_app.py
+
+Open your browser at http://localhost:8501
+and start chatting.
