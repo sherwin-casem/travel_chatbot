@@ -110,7 +110,6 @@ uvicorn app.main:app --reload
 
 ```bash
 streamlit run ui/streamlit_app.py
-
+```
 Open your browser at http://localhost:8501
 and start chatting.
-```
