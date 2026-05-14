@@ -74,13 +74,13 @@ travel-chatbot-rag/
 
 ### 1️⃣ Clone the repository
 
-```bash
+bash
 git clone https://github.com/your-username/travel-chatbot-rag.git
 cd travel-chatbot-rag
 
 ### 2️⃣ Setup environment
 
-```bash
+bash
 python -m venv venv
 # Windows
 venv\Scripts\activate
